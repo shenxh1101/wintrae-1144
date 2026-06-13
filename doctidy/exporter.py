@@ -129,7 +129,7 @@ def export_markdown_report(report: Dict, output_file: str):
                 lines.append(f"   操作: {change['action']}")
             lines.append("")
     
-    if report['files']:
+    if report.get('files'):
         lines.append("## 文件清单")
         lines.append("")
         lines.append("| 文件名 | 大小 | 修改时间 | 路径 |")

@@ -124,7 +124,8 @@ def check_command(
     min_size: Optional[str] = None,
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
-    date_to: Optional[str] = None
+    date_to: Optional[str] = None,
+    date_type: str = 'modified'
 ) -> Dict:
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
@@ -138,7 +139,8 @@ def check_command(
         min_size=min_size_bytes,
         max_size=max_size_bytes,
         date_from=date_from_dt,
-        date_to=date_to_dt
+        date_to=date_to_dt,
+        date_type=date_type
     )
     
     duplicates = {}

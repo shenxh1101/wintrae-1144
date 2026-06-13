@@ -74,7 +74,11 @@ def undo_operation(history_id: Optional[str] = None) -> Dict:
         if not history_file.exists():
             raise FileNotFoundError(f"未找到操作记录: {history_id}")
     else:
-        last_op = get_last_operation()
+        last_op = None
+        for h in get_history(limit=MAX_HISTORY):
+            if not h.get('undone'):
+                last_op = h
+                break
         if not last_op:
             raise ValueError("没有可撤销的操作")
         history_file = HISTORY_DIR / f"{last_op['id']}.json"
@@ -105,12 +109,26 @@ def undo_operation(history_id: Optional[str] = None) -> Dict:
             elif history_data['type'] == 'classify':
                 src = change['new_path']
                 dst = change['old_path']
-                if os.path.exists(src):
+                action = change.get('action', 'move')
+                if not os.path.exists(src):
+                    results['skipped'].append(f"源文件不存在: {src}")
+                    continue
+                if action == 'copy':
+                    try:
+                        os.remove(src)
+                        results['success'].append(f"删除副本: {os.path.basename(src)}")
+                        parent = str(Path(src).parent)
+                        try:
+                            if Path(parent).exists() and not any(Path(parent).iterdir()):
+                                Path(parent).rmdir()
+                        except OSError:
+                            pass
+                    except OSError as e:
+                        results['failed'].append(f"删除副本失败 {src}: {str(e)}")
+                else:
                     Path(dst).parent.mkdir(parents=True, exist_ok=True)
                     shutil.move(src, dst)
                     results['success'].append(f"{os.path.basename(src)} -> {dst}")
-                else:
-                    results['skipped'].append(f"源文件不存在: {src}")
             
             elif history_data['type'] == 'merge':
                 merged_file = change['merged_file']
@@ -136,18 +154,22 @@ def generate_report(
     files: List[Dict],
     changes: List[Dict],
     duplicates: Optional[Dict] = None,
-    missing: Optional[List[str]] = None
+    missing: Optional[List[str]] = None,
+    total_files: Optional[int] = None
 ) -> Dict:
+    count = total_files if total_files is not None else len(files)
     report = {
         'operation': operation,
         'timestamp': datetime.now().isoformat(),
         'summary': {
-            'total_files': len(files),
+            'total_files': count,
             'total_changes': len(changes),
         },
-        'files': files,
         'changes': changes
     }
+    
+    if files:
+        report['files'] = files
     
     if duplicates:
         report['duplicates'] = {

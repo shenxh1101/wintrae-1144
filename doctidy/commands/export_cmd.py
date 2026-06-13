@@ -23,7 +23,8 @@ def export_command(
     min_size: Optional[str] = None,
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
-    date_to: Optional[str] = None
+    date_to: Optional[str] = None,
+    date_type: str = 'modified'
 ) -> Dict:
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
@@ -37,7 +38,8 @@ def export_command(
         min_size=min_size_bytes,
         max_size=max_size_bytes,
         date_from=date_from_dt,
-        date_to=date_to_dt
+        date_to=date_to_dt,
+        date_type=date_type
     )
     
     if not format:
@@ -45,24 +47,26 @@ def export_command(
     
     format = format.lower()
     
-    export_files = files if include_details else []
+    report_files = files if include_details else []
     
     if format == 'csv':
-        export_to_csv(export_files, output_file)
+        export_to_csv(report_files, output_file)
     elif format == 'json':
         data = generate_report(
             operation='export',
-            files=files,
-            changes=[]
+            files=report_files,
+            changes=[],
+            total_files=len(files)
         )
         export_to_json(data, output_file)
     elif format == 'excel':
-        export_to_excel(export_files, output_file)
+        export_to_excel(report_files, output_file)
     elif format == 'markdown':
         report = generate_report(
             operation='export',
-            files=files,
-            changes=[]
+            files=report_files,
+            changes=[],
+            total_files=len(files)
         )
         export_markdown_report(report, output_file)
     else:

@@ -75,6 +75,7 @@ def merge_command(
     directory: str,
     output_dir: str,
     recursive: bool = False,
+    extensions: Optional[List[str]] = None,
     group_by: str = 'keyword',
     keywords: Optional[List[str]] = None,
     sort_by: str = 'name',
@@ -84,7 +85,8 @@ def merge_command(
     min_size: Optional[str] = None,
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
-    date_to: Optional[str] = None
+    date_to: Optional[str] = None,
+    date_type: str = 'modified'
 ) -> Dict:
     if not is_pdf_available():
         raise ImportError("需要安装 PyPDF2 才能使用 PDF 合并功能，请运行: pip install PyPDF2")
@@ -94,14 +96,17 @@ def merge_command(
     date_from_dt = parse_date(date_from) if date_from else None
     date_to_dt = parse_date(date_to) if date_to else None
     
+    scan_ext = extensions if extensions else ['pdf']
+    
     files = scan_directory(
         directory=directory,
         recursive=recursive,
-        extensions=['pdf'],
+        extensions=scan_ext,
         min_size=min_size_bytes,
         max_size=max_size_bytes,
         date_from=date_from_dt,
-        date_to=date_to_dt
+        date_to=date_to_dt,
+        date_type=date_type
     )
     
     pdf_files = [f for f in files if f['extension'] == '.pdf']

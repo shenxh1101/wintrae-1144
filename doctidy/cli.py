@@ -185,7 +185,8 @@ def rename(directory, pattern, recursive, extensions, min_size, max_size,
             min_size=min_size,
             max_size=max_size,
             date_from=date_from,
-            date_to=date_to
+            date_to=date_to,
+            date_type=date_type
         )
         print_rename_result(result, preview)
     except Exception as e:
@@ -252,7 +253,8 @@ def classify(directory, output_dir, recursive, extensions, min_size, max_size,
             min_size=min_size,
             max_size=max_size,
             date_from=date_from,
-            date_to=date_to
+            date_to=date_to,
+            date_type=date_type
         )
         print_classify_result(result, preview)
     except Exception as e:
@@ -317,7 +319,8 @@ def merge(directory, output_dir, recursive, extensions, min_size, max_size,
             min_size=min_size,
             max_size=max_size,
             date_from=date_from,
-            date_to=date_to
+            date_to=date_to,
+            date_type=date_type
         )
         print_merge_result(result, preview)
     except Exception as e:
@@ -362,7 +365,8 @@ def check(directory, recursive, extensions, min_size, max_size,
             min_size=min_size,
             max_size=max_size,
             date_from=date_from,
-            date_to=date_to
+            date_to=date_to,
+            date_type=date_type
         )
         print_check_result(result)
     except Exception as e:
@@ -419,7 +423,8 @@ def export(directory, output_file, recursive, extensions, min_size, max_size,
             min_size=min_size,
             max_size=max_size,
             date_from=date_from,
-            date_to=date_to
+            date_to=date_to,
+            date_type=date_type
         )
         print_export_result(result)
     except Exception as e:

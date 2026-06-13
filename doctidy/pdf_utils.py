@@ -35,6 +35,7 @@ def merge_pdfs(input_files: List[str], output_file: str, overwrite: bool = False
     
     writer = PdfWriter()
     files_merged = 0
+    readers = []
     
     try:
         for input_file in input_files:
@@ -45,6 +46,7 @@ def merge_pdfs(input_files: List[str], output_file: str, overwrite: bool = False
             
             try:
                 reader = PdfReader(input_file)
+                readers.append(reader)
                 for page in reader.pages:
                     writer.add_page(page)
                 files_merged += 1
@@ -60,5 +62,10 @@ def merge_pdfs(input_files: List[str], output_file: str, overwrite: bool = False
         
         return True
     
-    finally:
-        writer.close()
+    except Exception as e:
+        if output_path.exists():
+            try:
+                output_path.unlink()
+            except OSError:
+                pass
+        raise
