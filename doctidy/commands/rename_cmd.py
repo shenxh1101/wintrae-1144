@@ -10,6 +10,7 @@ from ..utils import (
     match_keywords, safe_filename, parse_size, parse_date
 )
 from ..history import save_operation
+from ..config import load_config, get_scan_extensions
 
 
 def generate_new_name(
@@ -117,8 +118,13 @@ def rename_command(
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    date_type: str = 'modified'
+    date_type: str = 'modified',
+    config_path: Optional[str] = None
 ) -> Dict:
+    config = load_config(config_path)
+    if extensions is None:
+        extensions = get_scan_extensions(config)
+    
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
     date_from_dt = parse_date(date_from) if date_from else None

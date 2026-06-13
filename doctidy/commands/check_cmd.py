@@ -10,16 +10,16 @@ from ..utils import (
     parse_date, format_size, match_keywords
 )
 from ..history import generate_report
-from ..config import load_config, get_main_doc_patterns, get_attachment_patterns
+from ..config import load_config, get_main_doc_patterns, get_attachment_patterns, get_scan_extensions
 
 
 def _build_main_doc_patterns(config_path: Optional[str] = None) -> List[str]:
-    config = load_config(config_path) if config_path else None
+    config = load_config(config_path)
     return get_main_doc_patterns(config)
 
 
 def _build_attachment_patterns(config_path: Optional[str] = None) -> List[Tuple[str, str]]:
-    config = load_config(config_path) if config_path else None
+    config = load_config(config_path)
     raw = get_attachment_patterns(config)
     result = []
     for item in raw:
@@ -127,6 +127,10 @@ def check_command(
     date_type: str = 'modified',
     config_path: Optional[str] = None
 ) -> Dict:
+    config = load_config(config_path)
+    if extensions is None:
+        extensions = get_scan_extensions(config)
+    
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
     date_from_dt = parse_date(date_from) if date_from else None

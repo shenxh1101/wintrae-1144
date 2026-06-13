@@ -10,6 +10,7 @@ from ..utils import (
 )
 from ..pdf_utils import merge_pdfs, is_pdf_available, get_pdf_page_count
 from ..history import save_operation
+from ..config import load_config
 
 
 def group_pdfs(files: List[Dict], group_by: str, 
@@ -86,8 +87,10 @@ def merge_command(
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    date_type: str = 'modified'
+    date_type: str = 'modified',
+    config_path: Optional[str] = None
 ) -> Dict:
+    config = load_config(config_path)
     if not is_pdf_available():
         raise ImportError("需要安装 PyPDF2 才能使用 PDF 合并功能，请运行: pip install PyPDF2")
     

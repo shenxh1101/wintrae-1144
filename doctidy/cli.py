@@ -110,7 +110,8 @@ def scan(directory, recursive, extensions, min_size, max_size,
             date_to=date_to,
             date_type=date_type,
             find_dup=find_dup,
-            show_details=details
+            show_details=details,
+            config_path=config_path
         )
         print_scan_result(result, details)
     except Exception as e:
@@ -168,7 +169,8 @@ def rename(directory, pattern, recursive, extensions, min_size, max_size,
             max_size=max_size,
             date_from=date_from,
             date_to=date_to,
-            date_type=date_type
+            date_type=date_type,
+            config_path=config_path
         )
         
         print_rename_result(result, preview=True)
@@ -192,7 +194,8 @@ def rename(directory, pattern, recursive, extensions, min_size, max_size,
                 max_size=max_size,
                 date_from=date_from,
                 date_to=date_to,
-                date_type=date_type
+                date_type=date_type,
+                config_path=config_path
             )
             click.echo("")
             click.echo("=" * 70)
@@ -343,7 +346,8 @@ def merge(directory, output_dir, recursive, extensions, min_size, max_size,
             max_size=max_size,
             date_from=date_from,
             date_to=date_to,
-            date_type=date_type
+            date_type=date_type,
+            config_path=config_path
         )
         
         print_merge_result(result, preview=True)
@@ -368,7 +372,8 @@ def merge(directory, output_dir, recursive, extensions, min_size, max_size,
                 max_size=max_size,
                 date_from=date_from,
                 date_to=date_to,
-                date_type=date_type
+                date_type=date_type,
+                config_path=config_path
             )
             click.echo("")
             click.echo("=" * 70)
@@ -440,7 +445,8 @@ def export(directory, output_file, recursive, extensions, min_size, max_size,
             max_size=max_size,
             date_from=date_from,
             date_to=date_to,
-            date_type=date_type
+            date_type=date_type,
+            config_path=config_path
         )
         print_export_result(result)
     except Exception as e:
@@ -576,10 +582,6 @@ def history(limit, details):
         sys.exit(1)
 
 
-if __name__ == '__main__':
-    main()
-
-
 @main.command()
 @click.option('--init', 'do_init', is_flag=True, help='初始化默认配置文件')
 @click.option('--show', is_flag=True, help='显示当前配置')
@@ -631,6 +633,8 @@ def config(do_init, show, path):
             for item in cfg.get('attachment_patterns', []):
                 click.echo(f"  - {item.get('regex', '')} => {item.get('template', '')}")
             
+            click.echo(f"\n扫描扩展名: {', '.join(cfg.get('scan_extensions', []))}")
+            
             click.echo(f"\n配置文件: {CONFIG_FILE}")
             click.echo("")
             return
@@ -639,3 +643,7 @@ def config(do_init, show, path):
     except Exception as e:
         click.echo(f"错误: {e}", err=True)
         sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

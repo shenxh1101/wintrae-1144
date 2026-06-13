@@ -9,6 +9,7 @@ from ..utils import (
     format_size
 )
 from ..history import generate_report
+from ..config import load_config, get_scan_extensions
 
 
 def scan_command(
@@ -21,8 +22,12 @@ def scan_command(
     date_to: Optional[str] = None,
     date_type: str = 'modified',
     find_dup: bool = False,
-    show_details: bool = False
+    show_details: bool = False,
+    config_path: Optional[str] = None
 ) -> Dict:
+    config = load_config(config_path)
+    if extensions is None:
+        extensions = get_scan_extensions(config)
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
     date_from_dt = parse_date(date_from) if date_from else None

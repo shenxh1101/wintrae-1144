@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 import click
 from datetime import datetime
@@ -10,13 +11,21 @@ from ..utils import (
     safe_filename, parse_size, parse_date, format_size
 )
 from ..history import save_operation
-from ..config import load_config, get_category_rules, get_extension_groups
+from ..config import load_config, get_category_rules, get_extension_groups, get_scan_extensions
+
+
+def _merge_keywords(base: List[str], extra: List[str]) -> List[str]:
+    merged = list(base)
+    for kw in extra:
+        if kw not in merged:
+            merged.append(kw)
+    return merged
 
 
 def build_rules(rules_file: Optional[str] = None, 
                 custom_rules: Optional[List[str]] = None,
                 config_path: Optional[str] = None) -> Dict[str, List[str]]:
-    config = load_config(config_path) if config_path else None
+    config = load_config(config_path)
     rules = get_category_rules(config)
     
     if rules_file and os.path.exists(rules_file):
@@ -24,7 +33,12 @@ def build_rules(rules_file: Optional[str] = None,
             with open(rules_file, 'r', encoding='utf-8') as f:
                 file_rules = json.load(f)
                 if isinstance(file_rules, dict):
-                    rules.update(file_rules)
+                    for category, keywords in file_rules.items():
+                        if isinstance(keywords, list):
+                            if category in rules:
+                                rules[category] = _merge_keywords(rules[category], keywords)
+                            else:
+                                rules[category] = list(keywords)
         except Exception as e:
             click.echo(f"警告: 无法读取规则文件 {rules_file}: {e}", err=True)
     
@@ -33,14 +47,18 @@ def build_rules(rules_file: Optional[str] = None,
             if ':' in rule:
                 category, keywords_str = rule.split(':', 1)
                 keywords = [k.strip() for k in keywords_str.split(',')]
-                rules[category.strip()] = keywords
+                category = category.strip()
+                if category in rules:
+                    rules[category] = _merge_keywords(rules[category], keywords)
+                else:
+                    rules[category] = keywords
     
     return rules
 
 
 def classify_by_extension(file_info: Dict, config_path: Optional[str] = None) -> Optional[str]:
     ext = file_info['extension']
-    config = load_config(config_path) if config_path else None
+    config = load_config(config_path)
     ext_groups = get_extension_groups(config)
     
     for category, exts in ext_groups.items():
@@ -94,6 +112,10 @@ def classify_command(
     date_type: str = 'modified',
     config_path: Optional[str] = None
 ) -> Dict:
+    config = load_config(config_path)
+    if extensions is None:
+        extensions = get_scan_extensions(config)
+    
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
     date_from_dt = parse_date(date_from) if date_from else None
