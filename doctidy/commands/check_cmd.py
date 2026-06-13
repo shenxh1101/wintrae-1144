@@ -10,24 +10,21 @@ from ..utils import (
     parse_date, format_size, match_keywords
 )
 from ..history import generate_report
+from ..config import load_config, get_main_doc_patterns, get_attachment_patterns
 
 
-MAIN_DOC_PATTERNS = [
-    r'合同', r'协议', r'Contract', r'Agreement',
-    r'报告', r'Report',
-    r'标书', r'投标', r'招标',
-    r'申请书', r'申请',
-]
+def _build_main_doc_patterns(config_path: Optional[str] = None) -> List[str]:
+    config = load_config(config_path) if config_path else None
+    return get_main_doc_patterns(config)
 
-ATTACHMENT_PATTERNS = [
-    (r'附件(\d*)', r'附件{num}'),
-    (r'附表(\d*)', r'附表{num}'),
-    (r'附图(\d*)', r'附图{num}'),
-    (r'附录(\d*)', r'附录{num}'),
-    (r'补充(\d*)', r'补充{num}'),
-    (r'Attachment[\s_-]*(\d*)', r'Attachment{num}'),
-    (r'Schedule[\s_-]*(\d*)', r'Schedule{num}'),
-]
+
+def _build_attachment_patterns(config_path: Optional[str] = None) -> List[Tuple[str, str]]:
+    config = load_config(config_path) if config_path else None
+    raw = get_attachment_patterns(config)
+    result = []
+    for item in raw:
+        result.append((item['regex'], item['template']))
+    return result
 
 NUMBER_PATTERNS = [
     r'[（(](\d+)[)）]',
@@ -46,25 +43,27 @@ def extract_doc_number(filename: str) -> Optional[str]:
     return None
 
 
-def is_main_document(filename: str) -> bool:
-    name_lower = filename.lower()
-    for pattern in MAIN_DOC_PATTERNS:
+def is_main_document(filename: str, config_path: Optional[str] = None) -> bool:
+    patterns = _build_main_doc_patterns(config_path)
+    for pattern in patterns:
         if re.search(pattern, filename, re.IGNORECASE):
             return True
     return False
 
 
-def find_expected_attachments(filename: str, files: List[Dict]) -> List[str]:
-    if not is_main_document(filename):
+def find_expected_attachments(filename: str, files: List[Dict], 
+                               config_path: Optional[str] = None) -> List[str]:
+    if not is_main_document(filename, config_path):
         return []
     
+    attachment_patterns = _build_attachment_patterns(config_path)
     doc_num = extract_doc_number(filename)
     expected = []
     
     file_names = {f['name'] for f in files}
     file_stems = {f['stem'] for f in files}
     
-    for pattern, template in ATTACHMENT_PATTERNS:
+    for pattern, template in attachment_patterns:
         match = re.search(pattern, filename, re.IGNORECASE)
         if match and match.group(1):
             start_num = int(match.group(1))
@@ -89,7 +88,7 @@ def find_expected_attachments(filename: str, files: List[Dict]) -> List[str]:
                         expected.append(cand)
     
     text = Path(filename).read_text(errors='ignore') if Path(filename).suffix.lower() in ['.txt', '.md'] else ''
-    for pattern, template in ATTACHMENT_PATTERNS:
+    for pattern, template in attachment_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         for m in matches:
             num_str = m if isinstance(m, str) else (m[0] if m else '')
@@ -102,13 +101,13 @@ def find_expected_attachments(filename: str, files: List[Dict]) -> List[str]:
     return expected
 
 
-def check_attachments(files: List[Dict]) -> Dict[str, List[str]]:
+def check_attachments(files: List[Dict], config_path: Optional[str] = None) -> Dict[str, List[str]]:
     missing_map: Dict[str, List[str]] = {}
     
-    main_docs = [f for f in files if is_main_document(f['name'])]
+    main_docs = [f for f in files if is_main_document(f['name'], config_path)]
     
     for doc in main_docs:
-        missing = find_expected_attachments(doc['path'], files)
+        missing = find_expected_attachments(doc['path'], files, config_path)
         if missing:
             missing_map[doc['path']] = missing
     
@@ -125,7 +124,8 @@ def check_command(
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    date_type: str = 'modified'
+    date_type: str = 'modified',
+    config_path: Optional[str] = None
 ) -> Dict:
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
@@ -149,7 +149,7 @@ def check_command(
     
     missing_attachments = {}
     if check_missing and files:
-        missing_attachments = check_attachments(files)
+        missing_attachments = check_attachments(files, config_path)
     
     all_missing = []
     for doc, missing in missing_attachments.items():

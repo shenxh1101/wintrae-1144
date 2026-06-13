@@ -10,24 +10,17 @@ from ..utils import (
     safe_filename, parse_size, parse_date, format_size
 )
 from ..history import save_operation
-
-
-DEFAULT_CATEGORY_RULES = {
-    '合同': ['合同', '协议', 'contract', 'agreement', '合作'],
-    '报告': ['报告', 'report', '分析', '统计', '调研'],
-    '发票': ['发票', 'invoice', '收据', '账单'],
-    '证件': ['证件', '证书', 'license', '资质', '执照'],
-    '合同附件': ['附件', 'attachment', '补充', '附表'],
-}
+from ..config import load_config, get_category_rules, get_extension_groups
 
 
 def build_rules(rules_file: Optional[str] = None, 
-                custom_rules: Optional[List[str]] = None) -> Dict[str, List[str]]:
-    rules = DEFAULT_CATEGORY_RULES.copy()
+                custom_rules: Optional[List[str]] = None,
+                config_path: Optional[str] = None) -> Dict[str, List[str]]:
+    config = load_config(config_path) if config_path else None
+    rules = get_category_rules(config)
     
     if rules_file and os.path.exists(rules_file):
         try:
-            import json
             with open(rules_file, 'r', encoding='utf-8') as f:
                 file_rules = json.load(f)
                 if isinstance(file_rules, dict):
@@ -45,25 +38,14 @@ def build_rules(rules_file: Optional[str] = None,
     return rules
 
 
-def classify_by_extension(file_info: Dict) -> Optional[str]:
+def classify_by_extension(file_info: Dict, config_path: Optional[str] = None) -> Optional[str]:
     ext = file_info['extension']
+    config = load_config(config_path) if config_path else None
+    ext_groups = get_extension_groups(config)
     
-    document_exts = {'.doc', '.docx', '.pdf', '.txt', '.md'}
-    spreadsheet_exts = {'.xls', '.xlsx', '.csv'}
-    image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff'}
-    archive_exts = {'.zip', '.rar', '.7z', '.tar', '.gz'}
-    email_exts = {'.eml', '.msg'}
-    
-    if ext in document_exts:
-        return '文档'
-    elif ext in spreadsheet_exts:
-        return '表格'
-    elif ext in image_exts:
-        return '图片'
-    elif ext in archive_exts:
-        return '压缩包'
-    elif ext in email_exts:
-        return '邮件'
+    for category, exts in ext_groups.items():
+        if ext in exts:
+            return category
     return None
 
 
@@ -73,7 +55,8 @@ def classify_by_date(file_info: Dict, date_format: str = '%Y-%m') -> str:
 
 
 def determine_category(file_info: Dict, rules: Dict[str, List[str]], 
-                       method: str = 'keyword') -> Optional[str]:
+                       method: str = 'keyword',
+                       config_path: Optional[str] = None) -> Optional[str]:
     name = file_info['name']
     
     if method in ('keyword', 'all'):
@@ -83,7 +66,7 @@ def determine_category(file_info: Dict, rules: Dict[str, List[str]],
                 return category
     
     if method in ('extension', 'all'):
-        ext_cat = classify_by_extension(file_info)
+        ext_cat = classify_by_extension(file_info, config_path)
         if ext_cat:
             return ext_cat
     
@@ -108,7 +91,8 @@ def classify_command(
     max_size: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    date_type: str = 'modified'
+    date_type: str = 'modified',
+    config_path: Optional[str] = None
 ) -> Dict:
     min_size_bytes = parse_size(min_size) if min_size else None
     max_size_bytes = parse_size(max_size) if max_size else None
@@ -126,7 +110,7 @@ def classify_command(
         date_type=date_type
     )
     
-    category_rules = build_rules(rules_file, rules)
+    category_rules = build_rules(rules_file, rules, config_path)
     
     if method == 'date':
         category_rules = {}
@@ -138,7 +122,7 @@ def classify_command(
         if method == 'date':
             category = classify_by_date(f, date_format)
         else:
-            category = determine_category(f, category_rules, method)
+            category = determine_category(f, category_rules, method, config_path)
         
         if category is None:
             category = '未分类'

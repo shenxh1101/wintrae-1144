@@ -1,0 +1,103 @@
+{
+  "type": "file_list",
+  "total": 8,
+  "timestamp": "2026-06-14T07:34:48.231515",
+  "files": [
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\2024年2月财务报表.txt",
+      "name": "2024年2月财务报表.txt",
+      "stem": "2024年2月财务报表",
+      "suffix": ".txt",
+      "size": 76,
+      "size_formatted": "76 B",
+      "modified": "2026-06-14 07:09:37",
+      "created": "2026-06-14 07:09:37",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\2024年第一季度销售报告.txt",
+      "name": "2024年第一季度销售报告.txt",
+      "stem": "2024年第一季度销售报告",
+      "suffix": ".txt",
+      "size": 96,
+      "size_formatted": "96 B",
+      "modified": "2026-06-14 07:09:36",
+      "created": "2026-06-14 07:09:36",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\产品A规格说明.txt",
+      "name": "产品A规格说明.txt",
+      "stem": "产品A规格说明",
+      "suffix": ".txt",
+      "size": 55,
+      "size_formatted": "55 B",
+      "modified": "2026-06-14 07:09:38",
+      "created": "2026-06-14 07:09:38",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\采购合同_20240220_NO-2024-002.txt",
+      "name": "采购合同_20240220_NO-2024-002.txt",
+      "stem": "采购合同_20240220_NO-2024-002",
+      "suffix": ".txt",
+      "size": 154,
+      "size_formatted": "154 B",
+      "modified": "2026-06-14 07:09:34",
+      "created": "2026-06-14 07:09:34",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\重复文件_副本1.txt",
+      "name": "重复文件_副本1.txt",
+      "stem": "重复文件_副本1",
+      "suffix": ".txt",
+      "size": 56,
+      "size_formatted": "56 B",
+      "modified": "2026-06-14 07:09:39",
+      "created": "2026-06-14 07:09:39",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\重复文件_副本2.txt",
+      "name": "重复文件_副本2.txt",
+      "stem": "重复文件_副本2",
+      "suffix": ".txt",
+      "size": 56,
+      "size_formatted": "56 B",
+      "modified": "2026-06-14 07:09:40",
+      "created": "2026-06-14 07:09:40",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\销售合同_20240115_NO-2024-001.txt",
+      "name": "销售合同_20240115_NO-2024-001.txt",
+      "stem": "销售合同_20240115_NO-2024-001",
+      "suffix": ".txt",
+      "size": 196,
+      "size_formatted": "196 B",
+      "modified": "2026-06-14 07:09:33",
+      "created": "2026-06-14 07:09:32",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs"
+    },
+    {
+      "path": "D:\\TraeProjects\\1144\\test_docs\\subdir\\项目进度报告_20240301.txt",
+      "name": "项目进度报告_20240301.txt",
+      "stem": "项目进度报告_20240301",
+      "suffix": ".txt",
+      "size": 49,
+      "size_formatted": "49 B",
+      "modified": "2026-06-14 07:09:41",
+      "created": "2026-06-14 07:09:41",
+      "extension": ".txt",
+      "parent": "D:\\TraeProjects\\1144\\test_docs\\subdir"
+    }
+  ]
+}
