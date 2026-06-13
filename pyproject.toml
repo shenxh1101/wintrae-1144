@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doctidy"
+version = "1.0.0"
+description = "文档批量整理命令行工具 - 扫描、重命名、分类、合并、检查、导出"
+requires-python = ">=3.8"
+dependencies = [
+    "click>=8.1.0",
+    "PyPDF2>=3.0.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "python-dateutil>=2.8.0",
+]
+
+[project.scripts]
+doctidy = "doctidy.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["doctidy*"]
