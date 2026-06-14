@@ -14,6 +14,11 @@ from ..history import save_operation
 from ..config import load_config, get_category_rules, get_extension_groups, get_scan_extensions
 
 
+SOURCE_DEFAULT = '默认配置'
+SOURCE_FILE = '规则文件'
+SOURCE_CLI = '命令行'
+
+
 def _merge_keywords(base: List[str], extra: List[str]) -> List[str]:
     merged = list(base)
     for kw in extra:
@@ -24,9 +29,18 @@ def _merge_keywords(base: List[str], extra: List[str]) -> List[str]:
 
 def build_rules(rules_file: Optional[str] = None, 
                 custom_rules: Optional[List[str]] = None,
-                config_path: Optional[str] = None) -> Dict[str, List[str]]:
+                config_path: Optional[str] = None) -> Tuple[Dict[str, List[str]], Dict[Tuple[str, str], str]]:
     config = load_config(config_path)
-    rules = get_category_rules(config)
+    default_rules = get_category_rules(config)
+    
+    merged_rules: Dict[str, List[str]] = {}
+    keyword_sources: Dict[str, Dict[str, str]] = {}
+    
+    for category, keywords in default_rules.items():
+        merged_rules[category] = list(keywords)
+        keyword_sources.setdefault(category, {})
+        for kw in keywords:
+            keyword_sources[category][kw] = SOURCE_DEFAULT
     
     if rules_file and os.path.exists(rules_file):
         try:
@@ -35,12 +49,28 @@ def build_rules(rules_file: Optional[str] = None,
                 if isinstance(file_rules, dict):
                     for category, keywords in file_rules.items():
                         if isinstance(keywords, list):
-                            if category in rules:
-                                rules[category] = _merge_keywords(rules[category], keywords)
-                            else:
-                                rules[category] = list(keywords)
+                            if category not in merged_rules:
+                                merged_rules[category] = []
+                            keyword_sources.setdefault(category, {})
+                            existing = merged_rules[category]
+                            for kw in keywords:
+                                if kw not in existing:
+                                    existing.append(kw)
+                                keyword_sources[category][kw] = SOURCE_FILE
         except Exception as e:
             click.echo(f"警告: 无法读取规则文件 {rules_file}: {e}", err=True)
+    
+    cli_category_order: List[str] = []
+    file_category_order: List[str] = []
+    if rules_file and os.path.exists(rules_file):
+        try:
+            with open(rules_file, 'r', encoding='utf-8') as f:
+                fr = json.load(f)
+                if isinstance(fr, dict):
+                    file_category_order = list(fr.keys())
+        except Exception:
+            pass
+    default_category_order: List[str] = list(default_rules.keys())
     
     if custom_rules:
         for rule in custom_rules:
@@ -48,45 +78,79 @@ def build_rules(rules_file: Optional[str] = None,
                 category, keywords_str = rule.split(':', 1)
                 keywords = [k.strip() for k in keywords_str.split(',')]
                 category = category.strip()
-                if category in rules:
-                    rules[category] = _merge_keywords(rules[category], keywords)
-                else:
-                    rules[category] = keywords
+                if category not in merged_rules:
+                    merged_rules[category] = []
+                keyword_sources.setdefault(category, {})
+                if category not in cli_category_order:
+                    cli_category_order.append(category)
+                existing = merged_rules[category]
+                for kw in keywords:
+                    if kw not in existing:
+                        existing.append(kw)
+                    keyword_sources[category][kw] = SOURCE_CLI
     
-    return rules
+    ordered_categories: List[str] = []
+    for c in cli_category_order:
+        if c in merged_rules and c not in ordered_categories:
+            ordered_categories.append(c)
+    for c in file_category_order:
+        if c in merged_rules and c not in ordered_categories:
+            ordered_categories.append(c)
+    for c in default_category_order:
+        if c in merged_rules and c not in ordered_categories:
+            ordered_categories.append(c)
+    for c in merged_rules.keys():
+        if c not in ordered_categories:
+            ordered_categories.append(c)
+    
+    ordered_rules: Dict[str, List[str]] = {}
+    for c in ordered_categories:
+        ordered_rules[c] = merged_rules[c]
+    
+    source_lookup: Dict[Tuple[str, str], str] = {}
+    for category in ordered_categories:
+        for kw in ordered_rules[category]:
+            src = keyword_sources.get(category, {}).get(kw, SOURCE_DEFAULT)
+            source_lookup[(category, kw)] = src
+    
+    return ordered_rules, source_lookup
 
 
-def classify_by_extension(file_info: Dict, config_path: Optional[str] = None) -> Optional[str]:
+def classify_by_extension(file_info: Dict, config_path: Optional[str] = None) -> Optional[Tuple[str, str, str]]:
     ext = file_info['extension']
     config = load_config(config_path)
     ext_groups = get_extension_groups(config)
     
     for category, exts in ext_groups.items():
         if ext in exts:
-            return category
+            return (category, ext, SOURCE_DEFAULT)
     return None
 
 
-def classify_by_date(file_info: Dict, date_format: str = '%Y-%m') -> str:
+def classify_by_date(file_info: Dict, date_format: str = '%Y-%m') -> Tuple[str, str, str]:
     date_obj = extract_date_from_name(file_info['name']) or file_info['modified']
-    return date_obj.strftime(date_format)
+    cat = date_obj.strftime(date_format)
+    return (cat, date_obj.strftime('%Y-%m-%d'), '日期分类')
 
 
 def determine_category(file_info: Dict, rules: Dict[str, List[str]], 
+                       source_lookup: Dict[Tuple[str, str], str],
                        method: str = 'keyword',
-                       config_path: Optional[str] = None) -> Optional[str]:
+                       config_path: Optional[str] = None) -> Optional[Tuple[str, str, str]]:
     name = file_info['name']
     
     if method in ('keyword', 'all'):
         for category, keywords in rules.items():
             matched = match_keywords(name, keywords)
             if matched:
-                return category
+                top_kw = matched[0]
+                src = source_lookup.get((category, top_kw), SOURCE_DEFAULT)
+                return (category, top_kw, src)
     
     if method in ('extension', 'all'):
-        ext_cat = classify_by_extension(file_info, config_path)
-        if ext_cat:
-            return ext_cat
+        ext_result = classify_by_extension(file_info, config_path)
+        if ext_result:
+            return ext_result
     
     if method in ('date', 'all'):
         return classify_by_date(file_info)
@@ -132,7 +196,7 @@ def classify_command(
         date_type=date_type
     )
     
-    category_rules = build_rules(rules_file, rules, config_path)
+    category_rules, source_lookup = build_rules(rules_file, rules, config_path)
     
     if method == 'date':
         category_rules = {}
@@ -141,12 +205,20 @@ def classify_command(
     category_stats: Dict[str, int] = {}
     
     for f in files:
+        matched_kw = ''
+        matched_source = ''
         if method == 'date':
-            category = classify_by_date(f, date_format)
+            category, matched_kw, matched_source = classify_by_date(f, date_format)
         else:
-            category = determine_category(f, category_rules, method, config_path)
+            det_result = determine_category(f, category_rules, source_lookup, method, config_path)
+            if det_result is None:
+                category = '未分类'
+                matched_kw = ''
+                matched_source = ''
+            else:
+                category, matched_kw, matched_source = det_result
         
-        if category is None:
+        if category is None or category == '':
             category = '未分类'
         
         category = safe_filename(category)
@@ -159,6 +231,8 @@ def classify_command(
             'new_path': str(target_path),
             'new_name': f['name'],
             'category': category,
+            'matched_keyword': matched_kw,
+            'matched_source': matched_source,
             'action': 'copy' if copy else 'move'
         })
         
@@ -219,7 +293,17 @@ def print_classify_result(result: Dict, preview: bool = False):
                 current_category = change['category']
                 click.echo(f"\n[{current_category}]")
             
-            click.echo(f"  {change['old_name']}")
+            kw = change.get('matched_keyword', '')
+            src = change.get('matched_source', '')
+            if kw:
+                hit_info = f"  ↳ 命中: \"{kw}\""
+                if src:
+                    hit_info += f"（{src}）"
+                click.echo(f"  {change['old_name']}")
+                click.echo(hit_info)
+            else:
+                click.echo(f"  {change['old_name']}")
+            
             if 'success' in change and not change['success']:
                 click.echo(f"    错误: {change.get('error', '未知错误')}", err=True)
         

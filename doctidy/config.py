@@ -98,6 +98,10 @@ def get_scan_extensions(config: Optional[Dict] = None) -> List[str]:
 
 def init_config(config_path: Optional[str] = None) -> str:
     path = Path(config_path) if config_path else CONFIG_FILE
+    if not config_path:
+        ensure_config_dir()
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         return str(path)
     
@@ -117,3 +121,82 @@ def _merge_config(base: Dict, override: Dict) -> Dict:
         else:
             result[key] = value
     return result
+
+
+def add_category_rule(config: Dict, category: str, keywords: List[str]) -> Dict:
+    rules = config.setdefault('category_rules', {})
+    if category not in rules:
+        rules[category] = []
+    for kw in keywords:
+        kw = kw.strip()
+        if kw and kw not in rules[category]:
+            rules[category].append(kw)
+    return config
+
+
+def remove_category_rule(config: Dict, category: str, keywords: Optional[List[str]] = None) -> Dict:
+    rules = config.get('category_rules', {})
+    if category not in rules:
+        return config
+    if keywords is None or len(keywords) == 0:
+        del rules[category]
+    else:
+        rules[category] = [kw for kw in rules[category] if kw not in [k.strip() for k in keywords]]
+        if not rules[category]:
+            del rules[category]
+    return config
+
+
+def add_scan_extension(config: Dict, extensions: List[str]) -> Dict:
+    exts = config.setdefault('scan_extensions', [])
+    for ext in extensions:
+        ext = ext.strip().lower()
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        if ext not in exts:
+            exts.append(ext)
+    return config
+
+
+def remove_scan_extension(config: Dict, extensions: List[str]) -> Dict:
+    exts = config.get('scan_extensions', [])
+    to_remove = set()
+    for ext in extensions:
+        ext = ext.strip().lower()
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        to_remove.add(ext)
+    config['scan_extensions'] = [e for e in exts if e not in to_remove]
+    return config
+
+
+def add_extension_group(config: Dict, group: str, extensions: List[str]) -> Dict:
+    groups = config.setdefault('extension_groups', {})
+    if group not in groups:
+        groups[group] = []
+    for ext in extensions:
+        ext = ext.strip().lower()
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        if ext not in groups[group]:
+            groups[group].append(ext)
+    return config
+
+
+def remove_extension_group(config: Dict, group: str, extensions: Optional[List[str]] = None) -> Dict:
+    groups = config.get('extension_groups', {})
+    if group not in groups:
+        return config
+    if extensions is None or len(extensions) == 0:
+        del groups[group]
+    else:
+        to_remove = set()
+        for ext in extensions:
+            ext = ext.strip().lower()
+            if not ext.startswith('.'):
+                ext = '.' + ext
+            to_remove.add(ext)
+        groups[group] = [e for e in groups[group] if e not in to_remove]
+        if not groups[group]:
+            del groups[group]
+    return config

@@ -12,7 +12,12 @@ from .commands.merge_cmd import merge_command, print_merge_result
 from .commands.check_cmd import check_command, print_check_result
 from .commands.export_cmd import export_command, print_export_result
 from .history import get_history, undo_operation, preview_undo, undo_partial
-from .config import load_config, init_config, save_config, CONFIG_FILE
+from .config import (
+    load_config, init_config, save_config, CONFIG_FILE,
+    add_category_rule, remove_category_rule,
+    add_scan_extension, remove_scan_extension,
+    add_extension_group, remove_extension_group
+)
 
 
 common_options = [
@@ -586,33 +591,115 @@ def history(limit, details):
 @click.option('--init', 'do_init', is_flag=True, help='初始化默认配置文件')
 @click.option('--show', is_flag=True, help='显示当前配置')
 @click.option('--path', is_flag=True, help='显示配置文件路径')
-def config(do_init, show, path):
+@click.option('--add-rule', help='添加分类规则，格式: 分类名:关键词1,关键词2')
+@click.option('--remove-rule', help='删除分类规则，格式: 分类名 或 分类名:关键词1,关键词2')
+@click.option('--add-extension', help='添加扫描扩展名，多个用逗号分隔')
+@click.option('--remove-extension', help='删除扫描扩展名，多个用逗号分隔')
+@click.option('--add-ext-group', help='添加扩展名到分组，格式: 分组名:.ext1,.ext2')
+@click.option('--remove-ext-group', help='从分组删除扩展名，格式: 分组名 或 分组名:.ext1,.ext2')
+@click.option('--config-file', 'target_config', help='指定要修改的配置文件路径，默认使用 ~/.doctidy/config.json')
+def config(do_init, show, path, add_rule, remove_rule, add_extension,
+           remove_extension, add_ext_group, remove_ext_group, target_config):
     """管理配置文件
     
     示例：
     
-      doctidy config --init           # 初始化默认配置到 ~/.doctidy/config.json
+      doctidy config --init                    # 初始化默认配置
+      doctidy config --show                    # 显示当前配置
+      doctidy config --path                    # 显示配置文件路径
     
-      doctidy config --show           # 显示当前配置内容
+      doctidy config --add-rule "财务:发票,账单,报表"       # 添加分类关键词
+      doctidy config --remove-rule "财务:账单"              # 从财务分类移除关键词
+      doctidy config --remove-rule "财务"                    # 删除整个财务分类
     
-      doctidy config --path           # 显示配置文件路径
+      doctidy config --add-extension ".md,.rtf"             # 添加扫描扩展名
+      doctidy config --remove-extension ".bmp,.gif"         # 移除扫描扩展名
+    
+      doctidy config --add-ext-group "文档:.md,.rtf"        # 向文档分组添加扩展名
+      doctidy config --remove-ext-group "文档:.rtf"         # 从文档分组移除扩展名
+      doctidy config --remove-ext-group "图片"                # 删除整个图片分组
     """
     try:
         if do_init:
-            config_path = init_config()
+            config_path = init_config(target_config)
             click.echo(f"配置文件已初始化: {config_path}")
             return
         
         if path:
-            click.echo(f"配置文件路径: {CONFIG_FILE}")
-            if CONFIG_FILE.exists():
+            cfg_path = target_config or str(CONFIG_FILE)
+            from pathlib import Path
+            p = Path(cfg_path)
+            click.echo(f"配置文件路径: {p}")
+            if p.exists():
                 click.echo(f"状态: 已存在")
             else:
                 click.echo(f"状态: 未创建（使用 --init 初始化）")
             return
         
+        has_mutation = any([add_rule, remove_rule, add_extension,
+                            remove_extension, add_ext_group, remove_ext_group])
+        
+        if has_mutation:
+            cfg = load_config(target_config)
+            
+            if add_rule:
+                if ':' not in add_rule:
+                    raise click.UsageError('--add-rule 格式: 分类名:关键词1,关键词2')
+                cat, kws_str = add_rule.split(':', 1)
+                kws = [k.strip() for k in kws_str.split(',') if k.strip()]
+                if not cat.strip() or not kws:
+                    raise click.UsageError('--add-rule 分类名和关键词不能为空')
+                cfg = add_category_rule(cfg, cat.strip(), kws)
+                click.echo(f"已添加分类规则: {cat.strip()} -> {', '.join(kws)}")
+            
+            if remove_rule:
+                if ':' in remove_rule:
+                    cat, kws_str = remove_rule.split(':', 1)
+                    kws = [k.strip() for k in kws_str.split(',') if k.strip()]
+                    cfg = remove_category_rule(cfg, cat.strip(), kws)
+                    click.echo(f"已从分类 [{cat.strip()}] 移除关键词: {', '.join(kws)}")
+                else:
+                    cfg = remove_category_rule(cfg, remove_rule.strip())
+                    click.echo(f"已删除分类: {remove_rule.strip()}")
+            
+            if add_extension:
+                exts = [e.strip() for e in add_extension.split(',') if e.strip()]
+                cfg = add_scan_extension(cfg, exts)
+                click.echo(f"已添加扫描扩展名: {', '.join(exts)}")
+            
+            if remove_extension:
+                exts = [e.strip() for e in remove_extension.split(',') if e.strip()]
+                cfg = remove_scan_extension(cfg, exts)
+                click.echo(f"已移除扫描扩展名: {', '.join(exts)}")
+            
+            if add_ext_group:
+                if ':' not in add_ext_group:
+                    raise click.UsageError('--add-ext-group 格式: 分组名:.ext1,.ext2')
+                group, exts_str = add_ext_group.split(':', 1)
+                exts = [e.strip() for e in exts_str.split(',') if e.strip()]
+                if not group.strip() or not exts:
+                    raise click.UsageError('--add-ext-group 分组名和扩展名不能为空')
+                cfg = add_extension_group(cfg, group.strip(), exts)
+                click.echo(f"已向分组 [{group.strip()}] 添加扩展名: {', '.join(exts)}")
+            
+            if remove_ext_group:
+                if ':' in remove_ext_group:
+                    group, exts_str = remove_ext_group.split(':', 1)
+                    exts = [e.strip() for e in exts_str.split(',') if e.strip()]
+                    cfg = remove_extension_group(cfg, group.strip(), exts)
+                    click.echo(f"已从分组 [{group.strip()}] 移除扩展名: {', '.join(exts)}")
+                else:
+                    cfg = remove_extension_group(cfg, remove_ext_group.strip())
+                    click.echo(f"已删除扩展名分组: {remove_ext_group.strip()}")
+            
+            save_config(cfg, target_config)
+            cfg_path = target_config or str(CONFIG_FILE)
+            click.echo(f"配置已保存: {cfg_path}")
+            return
+        
         if show:
-            cfg = load_config()
+            cfg = load_config(target_config)
+            cfg_path = target_config or str(CONFIG_FILE)
             click.echo("=" * 70)
             click.echo("当前配置")
             click.echo("=" * 70)
@@ -635,11 +722,11 @@ def config(do_init, show, path):
             
             click.echo(f"\n扫描扩展名: {', '.join(cfg.get('scan_extensions', []))}")
             
-            click.echo(f"\n配置文件: {CONFIG_FILE}")
+            click.echo(f"\n配置文件: {cfg_path}")
             click.echo("")
             return
         
-        click.echo("使用 --init, --show 或 --path 参数")
+        click.echo("使用 --init, --show, --path 或增删改选项。查看帮助: doctidy config --help")
     except Exception as e:
         click.echo(f"错误: {e}", err=True)
         sys.exit(1)
